@@ -59,9 +59,15 @@ If you need to modify the location database:
 
 ## API Configuration
 
-The demo uses Groq API for AI responses. The API key is included in the demo for testing purposes. For production use:
-1. Get your own API key from [Groq](https://console.groq.com)
-2. Replace the `GROQ_API_KEY` variable in `ISUGeoBot_demo.html`
+⚠️ **REQUIRED**: The application requires a Groq API key to function.
+
+1. Get your free API key from [Groq Console](https://console.groq.com)
+2. Open `ISUGeoBot_demo.html` in a text editor
+3. Find line ~396: `const GROQ_API_KEY = 'YOUR_GROQ_API_KEY_HERE';`
+4. Replace `'YOUR_GROQ_API_KEY_HERE'` with your actual API key
+5. Save the file
+
+**Note**: Never commit your actual API key to a public repository!
 
 ## Campus Locations Included
 
