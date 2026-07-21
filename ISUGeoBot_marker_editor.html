@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISU-GeoBot Marker Editor</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .map-panel {
+            flex: 3;
+            position: relative;
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+            cursor: crosshair;
+        }
+        
+        .map-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            max-width: 300px;
+        }
+        
+        .map-overlay h3 {
+            margin: 0 0 10px 0;
+            color: #1b4d3e;
+        }
+        
+        .map-overlay p {
+            margin: 5px 0;
+            font-size: 13px;
+            color: #555;
+        }
+        
+        .control-panel {
+            flex: 1;
+            background-color: #f8f9fa;
+            padding: 20px;
+            overflow-y: auto;
+            border-left: 2px solid #ddd;
+        }
+        
+        .control-panel h2 {
+            color: #1b4d3e;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .btn-primary {
+            background-color: #1b4d3e;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #153d32;
+        }
+        
+        .btn-success {
+            background-color: #5cb85c;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #4cae4c;
+        }
+        
+        .btn-danger {
+            background-color: #d9534f;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c9302c;
+        }
+        
+        .btn-info {
+            background-color: #5bc0de;
+            color: white;
+        }
+        
+        .marker-list {
+            margin-top: 20px;
+            border-top: 2px solid #ddd;
+            padding-top: 20px;
+        }
+        
+        .marker-item {
+            background-color: white;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #1b4d3e;
+        }
+        
+        .marker-item h4 {
+            margin: 0 0 5px 0;
+            color: #1b4d3e;
+        }
+        
+        .marker-item p {
+            margin: 3px 0;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .marker-item button {
+            margin-top: 5px;
+        }
+        
+        .coordinates-display {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .mode-indicator {
+            background-color: #5cb85c;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+        
+        .export-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff3cd;
+            border-radius: 5px;
+        }
+        
+        .export-section h3 {
+            margin: 0 0 10px 0;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- MAP PANEL -->
+        <div class="map-panel">
+            <div id="map"></div>
+            <div class="map-overlay">
+                <h3>🗺️ Marker Editor Mode</h3>
+                <p><strong>Click on the map</strong> to add a marker at that location.</p>
+                <p><strong>Click existing markers</strong> to view/edit their details.</p>
+                <p><strong>Right-click</strong> to get coordinates.</p>
+            </div>
+        </div>
+        
+        <!-- CONTROL PANEL -->
+        <div class="control-panel">
+            <h2>Marker Editor</h2>
+            
+            <div class="mode-indicator">✓ Click Mode Active</div>
+            
+            <div class="coordinates-display" id="coordsDisplay">
+                Click on the map to see coordinates
+            </div>
+            
+            <form id="markerForm">
+                <div class="form-group">
+                    <label>Location Name *</label>
+                    <input type="text" id="locationName" placeholder="e.g., College of Engineering" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Category *</label>
+                    <select id="category" required>
+                        <option value="">Select category...</option>
+                        <option value="Academic">Academic</option>
+                        <option value="Administration">Administration</option>
+                        <option value="Facility">Facility</option>
+                        <option value="Service">Service</option>
+                        <option value="Housing">Housing</option>
+                        <option value="Entrance">Entrance</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="description" placeholder="Brief description of this location"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Latitude</label>
+                    <input type="text" id="latitude" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label>Longitude</label>
+                    <input type="text" id="longitude" readonly>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Add Marker</button>
+                <button type="button" class="btn btn-danger" id="clearForm">Clear Form</button>
+            </form>
+            
+            <div class="export-section">
+                <h3>📥 Export Data</h3>
+                <button class="btn btn-success" id="exportBtn">Export as JSON</button>
+                <button class="btn btn-info" id="exportJSBtn">Export as JS File</button>
+            </div>
+            
+            <div class="marker-list">
+                <h3>Added Markers (<span id="markerCount">0</span>)</h3>
+                <div id="markerListContainer"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Initialize the map
+        const isuEchagueCenter = [16.720896, 121.689238];
+        const map = L.map('map', {
+            center: isuEchagueCenter,
+            zoom: 17,
+            minZoom: 16,
+            maxZoom: 19,
+            maxBounds: [
+                [16.715, 121.684],
+                [16.726, 121.694]
+            ],
+            maxBoundsViscosity: 1.0
+        });
+        
+        // Add tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Store markers data
+        let markersData = [];
+        let markerObjects = [];
+        let tempMarker = null;
+        
+        // Icon definitions
+        const iconStyles = {
+            Academic: { color: '#1b4d3e', letter: 'A' },
+            Administration: { color: '#d9534f', letter: 'O' },
+            Facility: { color: '#5bc0de', letter: 'F' },
+            Service: { color: '#f0ad4e', letter: 'S' },
+            Housing: { color: '#5cb85c', letter: 'H' },
+            Entrance: { color: '#777', letter: 'E' }
+        };
+        
+        function createIcon(category) {
+            const style = iconStyles[category] || iconStyles.Facility;
+            return L.divIcon({
+                html: `<div style="background-color: ${style.color}; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); font-size: 12px;">${style.letter}</div>`,
+                className: 'custom-icon',
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
+            });
+        }
+        
+        // Add main campus marker
+        L.marker(isuEchagueCenter, {
+            icon: L.divIcon({
+                html: '<div style="background-color: #ff4444; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 4px solid white; box-shadow: 0 3px 8px rgba(0,0,0,0.4); font-size: 14px;">★</div>',
+                className: 'custom-icon',
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            })
+        }).addTo(map).bindPopup('<strong>ISU Echague Main Campus</strong>');
+        
+        // Map click event
+        map.on('click', function(e) {
+            const lat = e.latlng.lat.toFixed(6);
+            const lng = e.latlng.lng.toFixed(6);
+            
+            // Update form fields
+            document.getElementById('latitude').value = lat;
+            document.getElementById('longitude').value = lng;
+            document.getElementById('coordsDisplay').innerHTML = `<strong>Selected:</strong> [${lat}, ${lng}]`;
+            
+            // Remove temp marker if exists
+            if (tempMarker) {
+                map.removeLayer(tempMarker);
+            }
+            
+            // Add temporary marker
+            tempMarker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    html: '<div style="background-color: #ffa500; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); font-size: 12px;">?</div>',
+                    className: 'custom-icon',
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14]
+                })
+            }).addTo(map).bindPopup('Temporary marker - Fill form and click "Add Marker"');
+        });
+        
+        // Form submission
+        document.getElementById('markerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('locationName').value;
+            const category = document.getElementById('category').value;
+            const description = document.getElementById('description').value;
+            const lat = parseFloat(document.getElementById('latitude').value);
+            const lng = parseFloat(document.getElementById('longitude').value);
+            
+            if (!name || !category || !lat || !lng) {
+                alert('Please fill in required fields and select a location on the map');
+                return;
+            }
+            
+            // Add to data
+            const markerData = {
+                id: markersData.length + 1,
+                name: name,
+                category: category,
+                description: description,
+                coordinates: [lat, lng]
+            };
+            
+            markersData.push(markerData);
+            
+            // Remove temp marker
+            if (tempMarker) {
+                map.removeLayer(tempMarker);
+                tempMarker = null;
+            }
+            
+            // Add permanent marker
+            const marker = L.marker([lat, lng], {
+                icon: createIcon(category)
+            }).addTo(map);
+            
+            marker.bindPopup(`<strong>${name}</strong><br/><em>${category}</em><br/>${description}`);
+            markerObjects.push(marker);
+            
+            // Update UI
+            updateMarkerList();
+            clearForm();
+            
+            alert(`Marker "${name}" added successfully!`);
+        });
+        
+        // Clear form
+        document.getElementById('clearForm').addEventListener('click', clearForm);
+        
+        function clearForm() {
+            document.getElementById('markerForm').reset();
+            document.getElementById('latitude').value = '';
+            document.getElementById('longitude').value = '';
+            document.getElementById('coordsDisplay').innerHTML = 'Click on the map to see coordinates';
+            
+            if (tempMarker) {
+                map.removeLayer(tempMarker);
+                tempMarker = null;
+            }
+        }
+        
+        // Update marker list
+        function updateMarkerList() {
+            const container = document.getElementById('markerListContainer');
+            const count = document.getElementById('markerCount');
+            
+            count.textContent = markersData.length;
+            
+            container.innerHTML = '';
+            
+            markersData.forEach((marker, index) => {
+                const div = document.createElement('div');
+                div.className = 'marker-item';
+                div.innerHTML = `
+                    <h4>${marker.name}</h4>
+                    <p><strong>Category:</strong> ${marker.category}</p>
+                    <p><strong>Coords:</strong> [${marker.coordinates[0]}, ${marker.coordinates[1]}]</p>
+                    <p>${marker.description}</p>
+                    <button class="btn btn-danger" onclick="deleteMarker(${index})" style="padding: 5px 10px; font-size: 12px;">Delete</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        // Delete marker
+        window.deleteMarker = function(index) {
+            if (confirm('Delete this marker?')) {
+                markersData.splice(index, 1);
+                map.removeLayer(markerObjects[index]);
+                markerObjects.splice(index, 1);
+                updateMarkerList();
+            }
+        };
+        
+        // Export as JSON
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            const dataStr = JSON.stringify(markersData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'isu_markers_data.json';
+            link.click();
+            URL.revokeObjectURL(url);
+        });
+        
+        // Export as JS file
+        document.getElementById('exportJSBtn').addEventListener('click', function() {
+            const jsContent = `// ISU Echague Campus Locations - Generated ${new Date().toLocaleString()}
+const ISU_MARKERS = ${JSON.stringify(markersData, null, 2)};
+
+// Export for use
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = ISU_MARKERS;
+}
+`;
+            const dataBlob = new Blob([jsContent], { type: 'text/javascript' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'isu_markers_data.js';
+            link.click();
+            URL.revokeObjectURL(url);
+        });
+        
+        // Right-click to show coordinates
+        map.on('contextmenu', function(e) {
+            const lat = e.latlng.lat.toFixed(6);
+            const lng = e.latlng.lng.toFixed(6);
+            alert(`Coordinates:\nLatitude: ${lat}\nLongitude: ${lng}`);
+        });
+    </script>
+</body>
+</html>
